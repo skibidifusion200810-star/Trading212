@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b0e12">
+  <meta name="description" content="GOLDX – globaler Multiplayer-Gold-Trading-Simulator mit virtuellem Guthaben.">
+  <title>GOLDX | Gold Trading Simulator</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="GOLDX Home"><span class="brand-mark"><svg viewBox="0 0 40 40"><path d="M7 28 18 9l8 13-6 9h-7l6-10-2-4-9 16h21l6-11-6-11-4 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg></span><span>GOLD<span class="brand-x">X</span><small>TRADING TERMINAL</small></span></a>
+    <div class="nav-caption">WORKSPACE</div>
+    <nav class="nav">
+      <button class="nav-item active" data-page="terminal"><span class="nav-icon">◫</span> Terminal <span class="nav-active-dot"></span></button>
+      <button class="nav-item" data-page="leaderboard"><span class="nav-icon">♛</span> Bestenliste</button>
+      <button class="nav-item" data-page="affiliate"><span class="nav-icon">◇</span> Affiliates</button>
+      <button class="nav-item" data-page="profile"><span class="nav-icon">◎</span> Mein Profil</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="network"><span class="online-dot"></span> <span id="onlineCount">0</span> Trader online</div>
+      <div class="simulation-label"><strong>DEMO MARKET</strong><span>100 % virtuell, kein Echtgeld</span></div>
+      <p class="sidebar-footer">GOLDX © 2026<br>Trade smart. Play bold.</p>
+    </div>
+  </aside>
+  <div class="main-frame">
+    <header class="topbar">
+      <div class="top-left"><button class="mobile-menu" id="menuBtn" aria-label="Menü öffnen">☰</button><span class="breadcrumb">MARKETS <span>/</span> <b id="currentPageLabel">XAU/USD TERMINAL</b></span><span class="exchange-open"><i></i> SIMULATED LIVE</span></div>
+      <div class="top-right">
+        <span class="header-market"><span class="dim">XAU/USD</span> <strong id="headerPrice">3,330.48</strong><span class="header-change" id="headerChange">LIVE</span></span>
+        <div class="header-separator"></div>
+        <button class="wallet-head" data-page="profile"><small>ACCOUNT BALANCE</small><strong id="headerBalance">$ 1,500.00</strong></button>
+        <button class="avatar" id="avatarButton" data-page="profile" title="Profil"><span id="avatarInitial">G</span></button>
+      </div>
+    </header>
+    <main class="main-content">
+      <section class="page active" id="page-terminal">
+        <div class="section-heading terminal-heading">
+          <div><div class="eyebrow"><span class="accent-line"></span> THE MARKET IS YOURS</div><h1>Gold <span class="subtle-title">/ XAUUSD</span></h1><div class="page-lead">Ein Markt. Tausende Möglichkeiten. Dein nächster Trade beginnt hier.</div></div>
+          <div class="hero-metrics"><div><small>MARKET PRICE</small><strong id="heroPrice">$3,330.48</strong></div><div><small>SPREAD</small><strong>$0.24</strong></div><div><small>LEVERAGE</small><strong>1:20</strong></div></div>
+        </div>
+        <div class="market-layout">
+          <section class="chart-panel surface">
+            <div class="chart-toolbar">
+              <div class="chart-identity"><div class="gold-icon">Au</div><div><strong>Gold / US Dollar</strong><span>GOLDX SIMULATED MARKET</span></div></div>
+              <div class="timeframes" id="timeframes">
+                <button data-interval="1s">1s</button><button data-interval="5s">5s</button><button data-interval="15s">15s</button><button class="selected" data-interval="1m">1m</button><button data-interval="5m">5m</button><button data-interval="15m">15m</button><button data-interval="1h">1h</button><button data-interval="4h">4h</button><button data-interval="1D">1D</button>
+              </div>
+            </div>
+            <div class="chart-stats"><span>O <b id="chartO">—</b></span><span>H <b class="positive" id="chartH">—</b></span><span>L <b class="negative" id="chartL">—</b></span><span>C <b id="chartC">—</b></span><div class="chart-help">SCROLL TO ZOOM · DRAG TO PAN</div></div>
+            <div class="chart-stage" id="chartStage"><canvas id="chartCanvas" aria-label="Simulierter Gold-Candlestick-Chart"></canvas><div id="chartLoader" class="chart-loading">MARKTDATEN WERDEN GELADEN …</div></div>
+            <div class="chart-bottom"><span><i class="live-pulse"></i> LIVE MARKET DATA <span class="muted">(SIMULATED)</span></span><div class="chart-legend"><span><i class="legend-buy"></i> BUY</span><span><i class="legend-sell"></i> SELL</span><button id="resetChart">CHART ZURÜCKSETZEN ↺</button></div></div>
+          </section>
+          <section class="order-panel surface">
+            <div class="panel-title"><div><small>TRADE EXECUTION</small><h2>Neue Order</h2></div><span class="badge-demo">DEMO</span></div>
+            <div class="direction-switch"><button id="buyBtn" class="active buy">↗ <b>BUY / LONG</b></button><button id="sellBtn" class="sell">↘ <b>SELL / SHORT</b></button></div>
+            <div class="ask-bid"><div><small>BID / SELL</small><strong id="bidPrice">3330.36</strong></div><div><small>ASK / BUY</small><strong id="askPrice">3330.60</strong></div></div>
+            <form id="orderForm" class="order-form">
+              <label>Ordertyp<select id="orderType"><option value="market">Market Order</option><option value="limit">Limit Order</option><option value="stop">Stop Order</option></select></label>
+              <label id="targetRow" class="hidden">Zielpreis (USD)<input id="targetInput" type="number" min="100" max="100000" step=".01" placeholder="z. B. 3325.00"></label>
+              <label>Positionsgröße <span class="muted">in Feinunzen (oz)</span><div class="input-with-unit"><input id="quantityInput" type="number" min=".001" max="5" step=".001" value=".100" required><span>OZ</span></div></label>
+              <div class="two-col"><label>Stop Loss <span class="muted">optional</span><input id="slInput" type="number" min="100" step=".01" placeholder="Nicht gesetzt"></label><label>Take Profit <span class="muted">optional</span><input id="tpInput" type="number" min="100" step=".01" placeholder="Nicht gesetzt"></label></div>
+              <div class="order-summary"><div><span>Erforderliche Margin</span><strong id="estimatedMargin">$16.65</strong></div><div><span>Verfügbare Margin</span><strong id="freeMargin">$1,500.00</strong></div><div><span>Hebel</span><strong>1:20</strong></div></div>
+              <button id="submitOrder" class="place-order buy-order" type="submit">↗ BUY GOLD</button>
+            </form>
+            <div class="order-disclaimer">ⓘ Simulation. Verluste sind nur virtuell. Ausführungen erfolgen serverseitig.</div>
+          </section>
+          <section class="chat-panel surface">
+            <div class="chat-heading"><div><small>COMMUNITY</small><h2>Global Chat <span class="chat-live-dot"></span></h2></div><span class="online-tag"><span id="chatOnline">0</span> ONLINE</span></div>
+            <div class="chat-intro">Tausche dich in Echtzeit mit anderen Tradern aus.</div>
+            <div class="chat-messages" id="chatMessages"><div class="empty-chat">Noch keine Nachrichten. Starte die Unterhaltung!</div></div>
+            <form id="chatForm" class="chat-form"><input id="chatInput" maxlength="240" placeholder="Nachricht schreiben …" autocomplete="off" aria-label="Chat-Nachricht"><button type="submit" aria-label="Nachricht senden">➤</button></form>
+            <div class="chat-foot">GLOBAL · COMMUNITY GUIDELINES APPLY</div>
+          </section>
+        </div>
+        <div class="account-strip"><div class="account-stat"><small>ACCOUNT BALANCE</small><strong id="statBalance">$1,500.00</strong></div><div class="account-stat"><small>ACCOUNT EQUITY</small><strong id="statEquity">$1,500.00</strong></div><div class="account-stat"><small>UNREALIZED P&L</small><strong id="statPnl">$0.00</strong></div><div class="account-stat"><small>FREE MARGIN</small><strong id="statFree">$1,500.00</strong></div></div>
+        <section class="positions-panel surface">
+          <div class="positions-header"><div class="tabs"><button class="active" data-tab="positions">Offene Positionen <span id="positionCount">0</span></button><button data-tab="pending">Pending Orders <span id="pendingCount">0</span></button><button data-tab="history">Trade-Historie</button></div><button id="refreshPositions" class="tiny-btn">↻ Aktualisieren</button></div>
+          <div class="table-scroller"><table><thead id="positionHead"></thead><tbody id="positionBody"><tr><td>Bitte anmelden.</td></tr></tbody></table></div>
+        </section>
+      </section>
+      <section class="page" id="page-leaderboard">
+        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> GLOBAL COMPETITION</div><h1>Die Besten <span class="subtle-title">der Welt.</span></h1><p class="page-lead">Miss dich mit anderen Tradern. Affiliate-Boni zählen nicht zum Trading-Profit.</p></div>
+        <div class="leaderboard-controls"><button class="active" data-rank="profit">Trading-Profit</button><button data-rank="balance">Kontoguthaben</button><button data-rank="wins">Gewonnene Trades</button></div>
+        <div class="surface ranking-surface"><div class="table-scroller"><table><thead><tr><th>RANG</th><th>TRADER</th><th>TRADING-PROFIT</th><th>GUTHABEN</th><th>WINRATE</th><th>TRADES</th></tr></thead><tbody id="rankingBody"></tbody></table></div></div>
+      </section>
+      <section class="page" id="page-affiliate">
+        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> GROW TOGETHER</div><h1>Trade zusammen. <span class="subtle-title">Profitiere zusammen.</span></h1><p class="page-lead">Lade Freunde ein, sammle virtuelles Guthaben und wachst gemeinsam.</p></div>
+        <div class="reward-layout"><div class="reward-card"><span>01 / FÜR DEINE FREUNDE</span><strong>+$2,000</strong><p>Wer sich mit deinem Code registriert, startet mit 3.500 $ statt 1.500 $.</p></div><div class="reward-card featured"><span>02 / FÜR DICH</span><strong>+$1,000</strong><p>Für jede gültige Registrierung über deinen persönlichen Code.</p></div></div>
+        <div class="surface affiliate-surface"><h2>Dein Affiliate-Code</h2><p>Jeder Benutzer kann exakt einen eigenen Code erstellen. Er kann später nicht geändert werden.</p><div id="affiliateCreate"><form id="affiliateForm"><input id="affiliateInput" minlength="3" maxlength="20" placeholder="DEINCODE" autocomplete="off"><button type="submit" class="gold-button">CODE ERSTELLEN</button></form></div><div id="affiliateExisting" class="hidden"><div class="code-display"><span id="myAffiliateCode">—</span><button id="copyAffiliate" class="gold-button">CODE KOPIEREN</button></div><div class="affiliate-statline"><span>Geworbene Trader</span><strong id="referralCount">0</strong></div><div class="affiliate-statline"><span>Gesamtbonus</span><strong id="referralEarnings">$0.00</strong></div></div></div>
+      </section>
+      <section class="page" id="page-profile">
+        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> YOUR JOURNEY</div><h1>Mein <span class="subtle-title">Trader-Profil.</span></h1><p class="page-lead">Deine Performance. Deine Statistiken. Dein Fortschritt.</p></div>
+        <div class="profile-banner surface"><div class="profile-avatar" id="profileInitial">G</div><div><small>GOLDX TRADER</small><h2 id="profileName">Guest</h2><p id="profileSince">Beitritt —</p></div><button id="logoutBtn" class="outline-button">Abmelden ↗</button></div>
+        <div class="profile-metrics"><div class="surface metric"><small>KONTOGUTHABEN</small><strong id="profileBalance">$0.00</strong></div><div class="surface metric"><small>TRADING-PROFIT</small><strong id="profileProfit">$0.00</strong></div><div class="surface metric"><small>WINRATE</small><strong id="profileWinrate">0%</strong></div><div class="surface metric"><small>TRADES GESAMT</small><strong id="profileTrades">0</strong></div></div>
+        <div class="surface history-card"><h2>Kontobewegungen</h2><div id="transactionList" class="transaction-list"></div></div>
+      </section>
+    </main>
+    <footer class="footer"><span>© 2026 GOLDX TRADING SIMULATOR</span><span>SIMULATED PRICES · VIRTUAL FUNDS ONLY · NOT FINANCIAL ADVICE</span></footer>
+  </div>
+</div>
+<div id="authOverlay" class="auth-overlay"><div class="auth-dialog"><div class="auth-logo">GOLD<span>X</span></div><div class="auth-decor">◈</div><p class="auth-kicker">WELCOME TO THE TERMINAL</p><h2 id="authTitle">Willkommen zurück.</h2><p id="authSubtitle">Melde dich an und betrete den globalen Goldmarkt.</p><div class="auth-tabs"><button id="loginTab" class="active">Anmelden</button><button id="registerTab">Registrieren</button></div><form id="authForm"><label id="usernameField" class="hidden">Benutzername<input id="authUsername" type="text" minlength="3" maxlength="20" autocomplete="username" placeholder="Dein Benutzername"></label><label>E-Mail-Adresse<input id="authEmail" type="email" autocomplete="email" required placeholder="name@beispiel.de"></label><label>Passwort<input id="authPassword" type="password" minlength="8" autocomplete="current-password" required placeholder="Mindestens 8 Zeichen"></label><label id="affiliateField" class="hidden">Affiliate-Code <span>(optional)</span><input id="authAffiliate" type="text" maxlength="20" placeholder="Code eines Freundes"></label><div class="auth-error" id="authError" role="alert"></div><button id="authSubmit" class="gold-button auth-submit" type="submit">ANMELDEN →</button></form><div class="auth-switch" id="authSwitch">Neu hier? <button id="switchRegister">Jetzt kostenlos registrieren</button></div><p class="auth-legal">Nur virtuelles Spielgeld. Keine Ein- und Auszahlungen.</p></div></div>
+<div id="toastArea" class="toast-area" aria-live="polite"></div>
+</body>
+</html>
