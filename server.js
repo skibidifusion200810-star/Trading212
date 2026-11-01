@@ -13,9 +13,22 @@ const { Server } = require('socket.io');
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required. Configure a PostgreSQL database.');
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters.');
+const PAGE_ORIGINS = [...new Set(['https://skibidifusion200810-star.github.io', ...(process.env.FRONTEND_ORIGIN || '').split(',').map(x => x.trim().replace(/\/$/, '')).filter(Boolean)])];
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+// Only these public origins may call the backend from browsers.
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (origin && PAGE_ORIGINS.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Vary', 'Origin');
+    res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(!origin || PAGE_ORIGINS.includes(origin) ? 204 : 403);
+  next();
+});
 app.use(helmet({ contentSecurityPolicy: { directives: {
   defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"],
   imgSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'ws:', 'wss:'],
@@ -24,9 +37,11 @@ app.use(helmet({ contentSecurityPolicy: { directives: {
 app.use(express.json({ limit: '16kb' }));
 app.use(cookieParser());
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: false }, transports: ['websocket', 'polling'] });
+const io = new Server(server, { cors: { origin: PAGE_ORIGINS, methods: ['GET', 'POST'] }, transports: ['websocket', 'polling'] });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10,
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined });
+  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  // Isolate GOLDX tables when a Render Postgres instance is shared with other apps.
+  options: '-c search_path=goldx,public' });
 const SECRET = process.env.SESSION_SECRET;
 const LEVERAGE = 20;
 const SPREAD = 0.24;
@@ -40,7 +55,11 @@ function validateUser(name) { return typeof name === 'string' && /^[a-zA-Z0-9_]{
 function validateEmail(email) { return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 180; }
 function fail(res, status, msg) { return res.status(status).json({ error: msg }); }
 function signed(req) {
-  try { return jwt.verify(req.cookies.goldx_session, SECRET, { algorithms: ['HS256'] }); }
+  try {
+    const header = req.get('authorization');
+    const token = header && header.startsWith('Bearer ') ? header.slice(7) : req.cookies.goldx_session;
+    return jwt.verify(token, SECRET, { algorithms: ['HS256'] });
+  }
   catch { return null; }
 }
 function auth(req, res, next) {
@@ -49,8 +68,10 @@ function auth(req, res, next) {
   req.user = u; next();
 }
 function cookie(res, id) {
-  res.cookie('goldx_session', jwt.sign({ id }, SECRET, { expiresIn: '7d' }),
+  const token = jwt.sign({ id }, SECRET, { expiresIn: '7d' });
+  res.cookie('goldx_session', token,
     { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 7 * 86400000 });
+  return token;
 }
 function errorHandler(err, req, res, next) {
   console.error(err);
@@ -77,6 +98,7 @@ async function ledger(client, user, amount, kind, description) {
   await client.query('INSERT INTO wallet_transactions (user_id,amount,kind,description) VALUES ($1,$2,$3,$4)', [user, amount, kind, description]);
 }
 async function init() {
+  await query('CREATE SCHEMA IF NOT EXISTS goldx');
   await query(`CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY, username VARCHAR(20) NOT NULL, email VARCHAR(180) NOT NULL,
     password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
@@ -239,9 +261,9 @@ app.post('/api/auth/register',authLimiter, async(req,res,next)=>{
       await ledger(client,referral,1000,'affiliate_referral','Affiliate-Empfehlung');
     }
     await client.query('COMMIT');
-    cookie(res,id);
+    const token=cookie(res,id);
     if(referral) {await notifyUser(referral,{reason:'affiliate'});broadcastNotice(referral,'Affiliate-Bonus erhalten: +1.000 $','success');}
-    res.status(201).json({user:await account(id)});
+    res.status(201).json({user:await account(id),token});
   }catch(e){
     await client.query('ROLLBACK').catch(()=>{});
     if(e.code==='23505') return fail(res,409,'E-Mail-Adresse oder Benutzername bereits vergeben.');
@@ -254,7 +276,7 @@ app.post('/api/auth/login',authLimiter,async(req,res,next)=>{
     if(typeof email!=='string'||typeof password!=='string')return fail(res,400,'Login-Daten fehlen.');
     const r=await query('SELECT * FROM users WHERE lower(email)=lower($1)',[email.trim()]);
     if(!r.rows.length||!(await bcrypt.compare(password,r.rows[0].password_hash))) return fail(res,401,'E-Mail oder Passwort falsch.');
-    cookie(res,r.rows[0].id);res.json({user:await account(r.rows[0].id)});
+    const token=cookie(res,r.rows[0].id);res.json({user:await account(r.rows[0].id),token});
   }catch(e){next(e);}
 });
 app.post('/api/auth/logout',(req,res)=>{res.clearCookie('goldx_session',{path:'/'});res.json({ok:true});});
@@ -436,7 +458,7 @@ async function tick() {
 io.use(async(socket,next)=>{
   try{
     const parts=Object.fromEntries((socket.handshake.headers.cookie||'').split(';').map(v=>v.trim().split('=')));
-    const token=parts.goldx_session ? decodeURIComponent(parts.goldx_session) : null;
+    const token=socket.handshake.auth?.token || (parts.goldx_session ? decodeURIComponent(parts.goldx_session) : null);
     if(!token)return next(new Error('Unauthorized'));
     const payload=jwt.verify(token,SECRET,{algorithms:['HS256']});
     const check=await query('SELECT id,username FROM users WHERE id=$1',[payload.id]);
