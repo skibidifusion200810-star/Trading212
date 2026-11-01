@@ -1,5 +1,5 @@
 'use strict';
-// Public endpoint only. Database credentials and SESSION_SECRET must never enter this file.
+// GitHub Pages uses browser-only GOLDX_DEMO. No external server required.
 const DEMO_MODE = Boolean(window.GOLDX_DEMO);
 const API_BASE = DEMO_MODE ? '' : String(window.GOLDX_API_BASE_URL || '').trim().replace(/\/+$/, '');
 const TOKEN_KEY = 'goldx_session_token';
@@ -97,7 +97,7 @@ function switchAuth(mode){
   qs('#usernameField').classList.remove('hidden');
   qs('#affiliateField').classList.toggle('hidden',!reg);
   setText('#authTitle',reg?'Deine Reise beginnt hier.':'Willkommen zurück.');
-  setText('#authSubtitle',reg?'Starte mit $1,500. Mit Affiliate-Code sogar $3,500.':'Melde dich an und betrete den globalen Goldmarkt.');
+  setText('#authSubtitle',reg?'Starte lokal mit $1,500. Mit einem Code eines Kontos auf diesem Gerät $3,500.':'Melde dich mit Benutzername und Passwort an. Kein E-Mail-Konto nötig.');
   setText('#authSubmit',reg?'KOSTENLOS REGISTRIEREN →':'ANMELDEN →');
   qs('#authSwitch').innerHTML=reg?'Schon ein Konto? <button id="switchRegister">Jetzt anmelden</button>':'Neu hier? <button id="switchRegister">Jetzt kostenlos registrieren</button>';
   qs('#switchRegister').onclick=()=>switchAuth(reg?'login':'register');
@@ -411,8 +411,8 @@ function bindEvents(){
     }catch(err){toast(err.message,'danger');}
   };
   qs('#copyAffiliate').onclick=async()=>{
-    const url=location.href.split('?')[0]+'?ref='+encodeURIComponent(state.user.affiliate_code);
-    try{await navigator.clipboard.writeText(url);toast(DEMO_MODE?'Link kopiert – funktioniert nur bei lokalen Konten auf diesem Gerät.':'Affiliate-Link kopiert!','success');}
+    const url=DEMO_MODE?state.user.affiliate_code:location.href.split('?')[0]+'?ref='+encodeURIComponent(state.user.affiliate_code);
+    try{await navigator.clipboard.writeText(url);toast(DEMO_MODE?'Code kopiert! Nur auf diesem Gerät einlösbar.':'Affiliate-Link kopiert!','success');}
     catch{toast('Kopiere deinen Code: '+state.user.affiliate_code);}
   };
   qs('#logoutBtn').onclick=async()=>{
@@ -432,9 +432,9 @@ function bindEvents(){
     if(authMode==='register'){data.affiliateCode=qs('#authAffiliate').value.trim()||undefined;}
     try{
       const out=await api('/api/auth/'+(authMode==='register'?'register':'login'),{method:'POST',body:JSON.stringify(data)});
-      if(out.token)saveToken(out.token);
+      if(out.token && !DEMO_MODE)saveToken(out.token);
       await onAuthenticated(out.user);
-      toast(authMode==='register'?'Willkommen bei GOLDX! Dein Konto ist bereit.':'Erfolgreich angemeldet.','success');
+      toast(authMode==='register'?'Willkommen bei GOLDX! Dein lokales Spielkonto ist bereit.':'Erfolgreich angemeldet.','success');
       qs('#authPassword').value='';
     }catch(err){setText('#authError',err.message);}
     finally{btn.disabled=false;}
