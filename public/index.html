@@ -8,6 +8,7 @@
   <title>GOLDX | Gold Trading Simulator</title>
   <link rel="stylesheet" href="./style.css">
   <script src="./config.js" defer></script>
+  <script src="./demo.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -22,8 +23,8 @@
       <button class="nav-item" data-page="profile"><span class="nav-icon">◎</span> Mein Profil</button>
     </nav>
     <div class="sidebar-bottom">
-      <div class="network"><span class="online-dot"></span> <span id="onlineCount">0</span> Trader online</div>
-      <div class="simulation-label"><strong>DEMO MARKET</strong><span>100 % virtuell, kein Echtgeld</span></div>
+      <div class="network"><span class="online-dot"></span> <span id="onlineCount">1</span> Spieler lokal</div>
+      <div class="simulation-label"><strong>BROWSER-DEMO</strong><span>Spielstand nur auf diesem Gerät gespeichert</span></div>
       <p class="sidebar-footer">GOLDX © 2026<br>Trade smart. Play bold.</p>
     </div>
   </aside>
@@ -67,14 +68,14 @@
               <div class="order-summary"><div><span>Erforderliche Margin</span><strong id="estimatedMargin">$16.65</strong></div><div><span>Verfügbare Margin</span><strong id="freeMargin">$1,500.00</strong></div><div><span>Hebel</span><strong>1:20</strong></div></div>
               <button id="submitOrder" class="place-order buy-order" type="submit">↗ BUY GOLD</button>
             </form>
-            <div class="order-disclaimer">ⓘ Simulation. Verluste sind nur virtuell. Ausführungen erfolgen serverseitig.</div>
+            <div class="order-disclaimer">ⓘ Browser-Simulation ohne Echtgeld. Orders und Kontostände werden auf diesem Gerät berechnet und gespeichert.</div>
           </section>
           <section class="chat-panel surface">
-            <div class="chat-heading"><div><small>COMMUNITY</small><h2>Global Chat <span class="chat-live-dot"></span></h2></div><span class="online-tag"><span id="chatOnline">0</span> ONLINE</span></div>
-            <div class="chat-intro">Tausche dich in Echtzeit mit anderen Tradern aus.</div>
+            <div class="chat-heading"><div><small>COMMUNITY</small><h2>Lokaler Chat <span class="chat-live-dot"></span></h2></div><span class="online-tag"><span id="chatOnline">1</span> LOKAL</span></div>
+            <div class="chat-intro">Lokale Nachrichten auf deinem Gerät. Kein globaler Chat ohne Server.</div>
             <div class="chat-messages" id="chatMessages"><div class="empty-chat">Noch keine Nachrichten. Starte die Unterhaltung!</div></div>
             <form id="chatForm" class="chat-form"><input id="chatInput" maxlength="240" placeholder="Nachricht schreiben …" autocomplete="off" aria-label="Chat-Nachricht"><button type="submit" aria-label="Nachricht senden">➤</button></form>
-            <div class="chat-foot">GLOBAL · COMMUNITY GUIDELINES APPLY</div>
+            <div class="chat-foot">BROWSER-CHAT · NICHT WELTWEIT SYNCHRONISIERT</div>
           </section>
         </div>
         <div class="account-strip"><div class="account-stat"><small>ACCOUNT BALANCE</small><strong id="statBalance">$1,500.00</strong></div><div class="account-stat"><small>ACCOUNT EQUITY</small><strong id="statEquity">$1,500.00</strong></div><div class="account-stat"><small>UNREALIZED P&L</small><strong id="statPnl">$0.00</strong></div><div class="account-stat"><small>FREE MARGIN</small><strong id="statFree">$1,500.00</strong></div></div>
@@ -84,13 +85,13 @@
         </section>
       </section>
       <section class="page" id="page-leaderboard">
-        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> GLOBAL COMPETITION</div><h1>Die Besten <span class="subtle-title">der Welt.</span></h1><p class="page-lead">Miss dich mit anderen Tradern. Affiliate-Boni zählen nicht zum Trading-Profit.</p></div>
+        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> GLOBAL COMPETITION</div><h1>Die Besten <span class="subtle-title">der Welt.</span></h1><p class="page-lead">Lokale Rangliste der Konten auf diesem Browser. Affiliate-Boni zählen nicht zum Trading-Profit.</p></div>
         <div class="leaderboard-controls"><button class="active" data-rank="profit">Trading-Profit</button><button data-rank="balance">Kontoguthaben</button><button data-rank="wins">Gewonnene Trades</button></div>
         <div class="surface ranking-surface"><div class="table-scroller"><table><thead><tr><th>RANG</th><th>TRADER</th><th>TRADING-PROFIT</th><th>GUTHABEN</th><th>WINRATE</th><th>TRADES</th></tr></thead><tbody id="rankingBody"></tbody></table></div></div>
       </section>
       <section class="page" id="page-affiliate">
-        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> GROW TOGETHER</div><h1>Trade zusammen. <span class="subtle-title">Profitiere zusammen.</span></h1><p class="page-lead">Lade Freunde ein, sammle virtuelles Guthaben und wachst gemeinsam.</p></div>
-        <div class="reward-layout"><div class="reward-card"><span>01 / FÜR DEINE FREUNDE</span><strong>+$2,000</strong><p>Wer sich mit deinem Code registriert, startet mit 3.500 $ statt 1.500 $.</p></div><div class="reward-card featured"><span>02 / FÜR DICH</span><strong>+$1,000</strong><p>Für jede gültige Registrierung über deinen persönlichen Code.</p></div></div>
+        <div class="section-heading"><div class="eyebrow"><span class="accent-line"></span> GROW TOGETHER</div><h1>Trade zusammen. <span class="subtle-title">Profitiere zusammen.</span></h1><p class="page-lead">Lokales Affiliate-System: Codes funktionieren nur zwischen Konten auf demselben Browser.</p></div>
+        <div class="reward-layout"><div class="reward-card"><span>01 / FÜR DEINE FREUNDE</span><strong>+$2,000</strong><p>Wer sich mit deinem Code registriert, startet mit 3.500 $ statt 1.500 $.</p></div><div class="reward-card featured"><span>02 / FÜR DICH</span><strong>+$1,000</strong><p>Für jede neue Registrierung mit deinem Code auf diesem Gerät.</p></div></div>
         <div class="surface affiliate-surface"><h2>Dein Affiliate-Code</h2><p>Jeder Benutzer kann exakt einen eigenen Code erstellen. Er kann später nicht geändert werden.</p><div id="affiliateCreate"><form id="affiliateForm"><input id="affiliateInput" minlength="3" maxlength="20" placeholder="DEINCODE" autocomplete="off"><button type="submit" class="gold-button">CODE ERSTELLEN</button></form></div><div id="affiliateExisting" class="hidden"><div class="code-display"><span id="myAffiliateCode">—</span><button id="copyAffiliate" class="gold-button">CODE KOPIEREN</button></div><div class="affiliate-statline"><span>Geworbene Trader</span><strong id="referralCount">0</strong></div><div class="affiliate-statline"><span>Gesamtbonus</span><strong id="referralEarnings">$0.00</strong></div></div></div>
       </section>
       <section class="page" id="page-profile">
@@ -100,10 +101,10 @@
         <div class="surface history-card"><h2>Kontobewegungen</h2><div id="transactionList" class="transaction-list"></div></div>
       </section>
     </main>
-    <footer class="footer"><span>© 2026 GOLDX TRADING SIMULATOR</span><span>SIMULATED PRICES · VIRTUAL FUNDS ONLY · NOT FINANCIAL ADVICE</span></footer>
+    <footer class="footer"><span>© 2026 GOLDX TRADING SIMULATOR</span><span>LOCAL BROWSER DEMO · KEIN ECHTGELD · KEIN GLOBALER MULTIPLAYER</span></footer>
   </div>
 </div>
-<div id="authOverlay" class="auth-overlay"><div class="auth-dialog"><div class="auth-logo">GOLD<span>X</span></div><div class="auth-decor">◈</div><p class="auth-kicker">WELCOME TO THE TERMINAL</p><h2 id="authTitle">Willkommen zurück.</h2><p id="authSubtitle">Melde dich an und betrete den globalen Goldmarkt.</p><div class="auth-tabs"><button id="loginTab" class="active">Anmelden</button><button id="registerTab">Registrieren</button></div><form id="authForm"><label id="usernameField" class="hidden">Benutzername<input id="authUsername" type="text" minlength="3" maxlength="20" autocomplete="username" placeholder="Dein Benutzername"></label><label>E-Mail-Adresse<input id="authEmail" type="email" autocomplete="email" required placeholder="name@beispiel.de"></label><label>Passwort<input id="authPassword" type="password" minlength="8" autocomplete="current-password" required placeholder="Mindestens 8 Zeichen"></label><label id="affiliateField" class="hidden">Affiliate-Code <span>(optional)</span><input id="authAffiliate" type="text" maxlength="20" placeholder="Code eines Freundes"></label><div class="auth-error" id="authError" role="alert"></div><button id="authSubmit" class="gold-button auth-submit" type="submit">ANMELDEN →</button></form><div class="auth-switch" id="authSwitch">Neu hier? <button id="switchRegister">Jetzt kostenlos registrieren</button></div><p class="auth-legal">Nur virtuelles Spielgeld. Keine Ein- und Auszahlungen.</p></div></div>
+<div id="authOverlay" class="auth-overlay"><div class="auth-dialog"><div class="auth-logo">GOLD<span>X</span></div><div class="auth-decor">◈</div><p class="auth-kicker">WELCOME TO THE TERMINAL</p><h2 id="authTitle">Willkommen zurück.</h2><p id="authSubtitle">Melde dich an und betrete den globalen Goldmarkt.</p><div class="auth-tabs"><button id="loginTab" class="active">Anmelden</button><button id="registerTab">Registrieren</button></div><form id="authForm"><label id="usernameField">Benutzername<input id="authUsername" type="text" minlength="3" maxlength="20" autocomplete="username" required placeholder="Dein Benutzername"></label><label>Passwort<input id="authPassword" type="password" minlength="8" autocomplete="current-password" required placeholder="Mindestens 8 Zeichen"></label><label id="affiliateField" class="hidden">Affiliate-Code <span>(optional)</span><input id="authAffiliate" type="text" maxlength="20" placeholder="Code eines Freundes"></label><div class="auth-error" id="authError" role="alert"></div><button id="authSubmit" class="gold-button auth-submit" type="submit">ANMELDEN →</button></form><div class="auth-switch" id="authSwitch">Neu hier? <button id="switchRegister">Jetzt kostenlos registrieren</button></div><p class="auth-legal">Lokale Demo: Konten und Guthaben werden nur in diesem Browser gespeichert. Nicht für echte Zugangsdaten verwenden.</p></div></div>
 <div id="toastArea" class="toast-area" aria-live="polite"></div>
 </body>
 </html>
