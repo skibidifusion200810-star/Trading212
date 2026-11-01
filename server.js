@@ -29,7 +29,7 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(!origin || PAGE_ORIGINS.includes(origin) ? 204 : 403);
   next();
 });
-app.use(helmet({ contentSecurityPolicy: { directives: {
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: { directives: {
   defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"],
   imgSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'ws:', 'wss:'],
   fontSrc: ["'self'"], objectSrc: ["'none'"], upgradeInsecureRequests: null
