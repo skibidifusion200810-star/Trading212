@@ -1,6 +1,7 @@
 'use strict';
 // Public endpoint only. Database credentials and SESSION_SECRET must never enter this file.
-const API_BASE = String(window.GOLDX_API_BASE_URL || '').trim().replace(/\/+$/, '');
+const DEMO_MODE = Boolean(window.GOLDX_DEMO);
+const API_BASE = DEMO_MODE ? '' : String(window.GOLDX_API_BASE_URL || '').trim().replace(/\/+$/, '');
 const TOKEN_KEY = 'goldx_session_token';
 let sessionToken = (() => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } })();
 function saveToken(token) {
@@ -30,6 +31,7 @@ const pclass = (n) => Number(n)>=0?'positive':'negative';
 const date = (v) => new Date(v).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const esc = (s) => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(url,opts={}) {
+  if (DEMO_MODE) return window.GOLDX_DEMO.request(url,opts);
   const res=await fetch(API_BASE+url,{
     credentials:API_BASE?'omit':'same-origin',...opts,
     headers:{...(opts.body?{'Content-Type':'application/json'}:{}),
@@ -92,7 +94,7 @@ function switchAuth(mode){
   const reg=mode==='register';
   qs('#loginTab').classList.toggle('active',!reg);
   qs('#registerTab').classList.toggle('active',reg);
-  qs('#usernameField').classList.toggle('hidden',!reg);
+  qs('#usernameField').classList.remove('hidden');
   qs('#affiliateField').classList.toggle('hidden',!reg);
   setText('#authTitle',reg?'Deine Reise beginnt hier.':'Willkommen zurück.');
   setText('#authSubtitle',reg?'Starte mit $1,500. Mit Affiliate-Code sogar $3,500.':'Melde dich an und betrete den globalen Goldmarkt.');
@@ -106,12 +108,33 @@ async function onAuthenticated(user) {
   state.user=user;
   hideAuth();
   updateAccountWidgets();
-  try { await loadSocketClient(); connectSocket(); }
+  try { if (!DEMO_MODE) await loadSocketClient(); connectSocket(); }
   catch (e) { toast(e.message, 'danger'); }
   await refreshAccount();
   await Promise.all([loadCandles(),loadChat(),loadLeaderboard()]);
 }
 function connectSocket() {
+  if (DEMO_MODE) {
+    if (state.socket) state.socket.disconnect();
+    setText('#onlineCount', '1');setText('#chatOnline', '1');
+    const timer=setInterval(()=>{
+      const t=window.GOLDX_DEMO.tick();
+      receiveTick(t);
+      if (t.changed) refreshAccount();
+    },1000);
+    state.socket={
+      connected:true,
+      disconnect(){clearInterval(timer);this.connected=false;},
+      emit(event,data,ack){
+        if(event==='chat:send'){
+          const result=window.GOLDX_DEMO.sendChat(data.body);
+          if(result.ok)appendChat(result.message,true);
+          if(typeof ack==='function')ack(result.ok?{ok:true}:{error:result.error});
+        }
+      }
+    };
+    return;
+  }
   if(state.socket)state.socket.disconnect();
   if(typeof io!=='function'){toast('Socket-Verbindung nicht geladen.','danger');return;}
   const socket=io(API_BASE || undefined,{transports:['websocket','polling'],reconnection:true,
@@ -388,8 +411,8 @@ function bindEvents(){
     }catch(err){toast(err.message,'danger');}
   };
   qs('#copyAffiliate').onclick=async()=>{
-    const url=location.origin+'/?ref='+encodeURIComponent(state.user.affiliate_code);
-    try{await navigator.clipboard.writeText(url);toast('Affiliate-Link kopiert!','success');}
+    const url=location.href.split('?')[0]+'?ref='+encodeURIComponent(state.user.affiliate_code);
+    try{await navigator.clipboard.writeText(url);toast(DEMO_MODE?'Link kopiert – funktioniert nur bei lokalen Konten auf diesem Gerät.':'Affiliate-Link kopiert!','success');}
     catch{toast('Kopiere deinen Code: '+state.user.affiliate_code);}
   };
   qs('#logoutBtn').onclick=async()=>{
@@ -405,8 +428,8 @@ function bindEvents(){
   qs('#authForm').onsubmit=async e=>{
     e.preventDefault();setText('#authError','');
     const btn=qs('#authSubmit');btn.disabled=true;
-    const data={email:qs('#authEmail').value,password:qs('#authPassword').value};
-    if(authMode==='register'){data.username=qs('#authUsername').value;data.affiliateCode=qs('#authAffiliate').value.trim()||undefined;}
+    const data={username:qs('#authUsername').value,password:qs('#authPassword').value};
+    if(authMode==='register'){data.affiliateCode=qs('#authAffiliate').value.trim()||undefined;}
     try{
       const out=await api('/api/auth/'+(authMode==='register'?'register':'login'),{method:'POST',body:JSON.stringify(data)});
       if(out.token)saveToken(out.token);
@@ -420,15 +443,11 @@ function bindEvents(){
 }
 async function start(){
   bindEvents();
-  if (isPages() && !API_BASE) {
-    showAuth();
-    setText('#authError', 'Der GOLDX-Backend-Server ist noch nicht konfiguriert. Der Betreiber muss in GitHub unter Settings → Secrets and variables → Actions → Variables die Variable GOLDX_API_URL mit der öffentlichen Render-URL setzen und die Pages-Action erneut ausführen.');
-    qs('#authSubmit').disabled = true;
-    return;
-  }
+
   showPrice();
   const ref=new URLSearchParams(location.search).get('ref');
   if(ref){qs('#authAffiliate').value=ref.replace(/[^A-Za-z0-9_]/g,'').slice(0,20).toUpperCase();switchAuth('register');}
+  if (DEMO_MODE) {setText('#onlineCount','1');setText('#chatOnline','1');}
   try{
     const market=await api('/api/market');
     state.price=Number(market.price);state.prevPrice=state.price;showPrice();
@@ -436,6 +455,11 @@ async function start(){
   try{const data=await api('/api/me');if(data.user)await onAuthenticated(data.user);else showAuth();}
   catch{showAuth();}
   if(!state.user)loadCandles();
+  if(DEMO_MODE)window.addEventListener('storage',e=>{
+    if(e.key==='goldx_browser_game_v3'){
+      refreshAccount();loadLeaderboard();loadChat();
+    }
+  });
   setInterval(()=>{if(state.user&&state.currentPage==='leaderboard')loadLeaderboard();},30000);
 }
 document.addEventListener('DOMContentLoaded',start);
