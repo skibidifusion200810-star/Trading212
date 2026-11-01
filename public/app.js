@@ -1,4 +1,23 @@
 'use strict';
+// Public endpoint only. Database credentials and SESSION_SECRET must never enter this file.
+const API_BASE = String(window.GOLDX_API_BASE_URL || '').trim().replace(/\/+$/, '');
+const TOKEN_KEY = 'goldx_session_token';
+let sessionToken = (() => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } })();
+function saveToken(token) {
+  sessionToken = token || '';
+  try { if (sessionToken) localStorage.setItem(TOKEN_KEY, sessionToken); else localStorage.removeItem(TOKEN_KEY); } catch {}
+}
+function isPages() { return window.location.hostname.endsWith('.github.io'); }
+async function loadSocketClient() {
+  if (typeof io === 'function') return;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = API_BASE + '/socket.io/socket.io.js';
+    script.onload = () => typeof io === 'function' ? resolve() : reject(new Error('Socket.IO nicht verfügbar.'));
+    script.onerror = () => reject(new Error('Live-Chat-Server ist nicht erreichbar.'));
+    document.head.appendChild(script);
+  });
+}
 const qs = (s) => document.querySelector(s);
 const qsa = (s) => Array.from(document.querySelectorAll(s));
 const state = { user:null, positions:[], orders:[], transactions:[], candles:[],
@@ -11,7 +30,11 @@ const pclass = (n) => Number(n)>=0?'positive':'negative';
 const date = (v) => new Date(v).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const esc = (s) => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(url,opts={}) {
-  const res=await fetch(url,{credentials:'same-origin',...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});
+  const res=await fetch(API_BASE+url,{
+    credentials:API_BASE?'omit':'same-origin',...opts,
+    headers:{...(opts.body?{'Content-Type':'application/json'}:{}),
+      ...(sessionToken?{Authorization:'Bearer '+sessionToken}:{}),...(opts.headers||{})}
+  });
   let data;
   try{data=await res.json();}catch{throw new Error('Ungültige Serverantwort.');}
   if(!res.ok)throw new Error(data.error||'Ein Fehler ist aufgetreten.');
@@ -83,14 +106,16 @@ async function onAuthenticated(user) {
   state.user=user;
   hideAuth();
   updateAccountWidgets();
-  connectSocket();
+  try { await loadSocketClient(); connectSocket(); }
+  catch (e) { toast(e.message, 'danger'); }
   await refreshAccount();
   await Promise.all([loadCandles(),loadChat(),loadLeaderboard()]);
 }
 function connectSocket() {
   if(state.socket)state.socket.disconnect();
   if(typeof io!=='function'){toast('Socket-Verbindung nicht geladen.','danger');return;}
-  const socket=io({transports:['websocket','polling'],reconnection:true});
+  const socket=io(API_BASE || undefined,{transports:['websocket','polling'],reconnection:true,
+    auth:{token:sessionToken}});
   state.socket=socket;
   socket.on('market:tick',receiveTick);
   socket.on('online:count',n=>{setText('#onlineCount',n);setText('#chatOnline',n);});
@@ -370,6 +395,7 @@ function bindEvents(){
   qs('#logoutBtn').onclick=async()=>{
     try{await api('/api/auth/logout',{method:'POST'});}catch{}
     if(state.socket)state.socket.disconnect();
+    saveToken('');
     state.socket=null;state.user=null;state.positions=[];state.orders=[];state.transactions=[];
     showPage('terminal');showAuth();switchAuth('login');
   };
@@ -383,6 +409,7 @@ function bindEvents(){
     if(authMode==='register'){data.username=qs('#authUsername').value;data.affiliateCode=qs('#authAffiliate').value.trim()||undefined;}
     try{
       const out=await api('/api/auth/'+(authMode==='register'?'register':'login'),{method:'POST',body:JSON.stringify(data)});
+      if(out.token)saveToken(out.token);
       await onAuthenticated(out.user);
       toast(authMode==='register'?'Willkommen bei GOLDX! Dein Konto ist bereit.':'Erfolgreich angemeldet.','success');
       qs('#authPassword').value='';
@@ -393,6 +420,12 @@ function bindEvents(){
 }
 async function start(){
   bindEvents();
+  if (isPages() && !API_BASE) {
+    showAuth();
+    setText('#authError', 'Der GOLDX-Backend-Server ist noch nicht konfiguriert. Der Betreiber muss in GitHub unter Settings → Secrets and variables → Actions → Variables die Variable GOLDX_API_URL mit der öffentlichen Render-URL setzen und die Pages-Action erneut ausführen.');
+    qs('#authSubmit').disabled = true;
+    return;
+  }
   showPrice();
   const ref=new URLSearchParams(location.search).get('ref');
   if(ref){qs('#authAffiliate').value=ref.replace(/[^A-Za-z0-9_]/g,'').slice(0,20).toUpperCase();switchAuth('register');}
