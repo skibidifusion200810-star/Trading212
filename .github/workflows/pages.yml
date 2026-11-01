@@ -1,4 +1,4 @@
-name: Deploy GOLDX to GitHub Pages
+name: Deploy playable GOLDX to GitHub Pages
 
 on:
   push:
@@ -22,23 +22,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Generate public frontend configuration
-        env:
-          GOLDX_API_URL: ${{ vars.GOLDX_API_URL }}
-        run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const raw = (process.env.GOLDX_API_URL || '').trim().replace(/\/+$/, '');
-          if (raw && !/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(raw)) {
-            throw new Error('GOLDX_API_URL must be the HTTPS origin of your backend (no path, no trailing slash).');
-          }
-          fs.writeFileSync('public/config.js',
-            '// Public API endpoint (no secrets)\nwindow.GOLDX_API_BASE_URL = ' + JSON.stringify(raw) + ';\n');
-          NODE
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
-      - name: Deploy
+      - name: Publish browser game
         id: deployment
         uses: actions/deploy-pages@v4
