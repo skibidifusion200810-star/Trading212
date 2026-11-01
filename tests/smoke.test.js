@@ -8,9 +8,9 @@ const PORT = 32077;
 const BASE = 'http://127.0.0.1:' + PORT;
 const pause = ms => new Promise(r=>setTimeout(r,ms));
 
-async function request(route, method='GET', body, cookie) {
+async function request(route, method='GET', body, cookie, token) {
   const res=await fetch(BASE+route,{method,
-    headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},
+    headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),...(token?{Authorization:'Bearer '+token}:{})},
     body:body?JSON.stringify(body):undefined});
   const json=await res.json();
   return {status:res.status,data:json,cookie:res.headers.get('set-cookie')?.split(';')[0]};
@@ -41,6 +41,13 @@ test('GOLDX registration, bonus, account, live market, orders, chat', {timeout:1
     assert.equal(one.status,201,JSON.stringify(one.data));
     assert.equal(one.data.user.balance,1500);
     assert.ok(one.cookie);
+    assert.ok(one.data.token);
+    const bearerMe=await request('/api/me','GET',undefined,undefined,one.data.token);
+    assert.equal(bearerMe.status,200);
+    assert.equal(bearerMe.data.user.username,'Trader'+rnd);
+    const cors=await fetch(BASE+'/api/market',{method:'OPTIONS',headers:{Origin:'https://skibidifusion200810-star.github.io','Access-Control-Request-Method':'GET'}});
+    assert.equal(cors.status,204);
+    assert.equal(cors.headers.get('access-control-allow-origin'),'https://skibidifusion200810-star.github.io');
     const code='TEST'+rnd.toUpperCase();
     const affiliate=await request('/api/affiliate','POST',{code},one.cookie);
     assert.equal(affiliate.status,201,JSON.stringify(affiliate.data));
@@ -80,7 +87,7 @@ test('GOLDX registration, bonus, account, live market, orders, chat', {timeout:1
     const ranking=await request('/api/leaderboard?mode=profit');
     assert.equal(ranking.status,200);
     assert.ok(ranking.data.find(item=>item.username==='Trader'+rnd));
-    socket=io(BASE,{transports:['websocket'],extraHeaders:{Cookie:one.cookie}});
+    socket=io(BASE,{transports:['websocket'],auth:{token:one.data.token}});
     await new Promise((resolve,reject)=>{
       const timer=setTimeout(()=>reject(new Error('Socket connection timed out')),10000);
       socket.once('connect',()=>{clearTimeout(timer);resolve();});
