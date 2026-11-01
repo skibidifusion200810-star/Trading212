@@ -1,74 +1,98 @@
-# GOLDX — Global Gold Trading Simulator
+# GOLDX — Trading-Simulator
 
-Ein responsives, globales Browser-Trading-Spiel mit **virtuellem Gold (XAU/USD)**. Keine echten Börsenkurse, kein Echtgeld und keine Auszahlungen. Alle Spieler sehen denselben serverseitig simulierten Kurs.
+Ein globaler Multiplayer-Gold-Trading-Simulator mit **ausschließlich virtuellem Guthaben** und selbst simulierten Goldkursen (nicht die echten XAU/USD-Börsenkurse).
 
-## Features
+## Aufteilung (GitHub Pages + Render)
 
-- Registrierung und Anmeldung mit gehashten Passwörtern, HTTP-only Session-Cookie
-- **1.500 $ virtuelles Startguthaben**
-- Affiliate-System: **genau ein Code pro Konto**; Neuling bekommt **+2.000 $**, Werber **+1.000 $**
-- Gemeinsamer Live-Goldpreis, zufällige Marktrichtungen und zeitweise erhöhte Volatilität
-- Candlestick-Chart mit Zeitintervallen, Zoom, Pan, Crosshair, SL/TP-Linien
-- Long/Buy und Short/Sell mit Spread, Positionsgröße und simuliertem Hebel 1:20
-- Market-, Limit- und Stop-Orders, Stop Loss, Take Profit, manuelles Schließen
-- Serverseitige Berechnungen und Prüfungen der freien Margin
-- WebSocket-Livechat, globales Ranking, Profil mit Trade-Statistik und Kontoaktivitäten
-- Responsive Dark-Mode-UI auf Deutsch
+- **GitHub Pages:** statische Dateien aus `public/` (UI, Candlestick-Chart, Benutzerprofile, Leaderboard, Chat-Fenster).
+- **Render:** Node.js-Backend mit Express und Socket.IO für Registrierung, Login, Goldkurs, Trades, Chat und Leaderboard.
+- **Deine vorhandene Render PostgreSQL-Datenbank:** Benutzer, Guthaben, Transaktionen, Positionen, Chat. GOLDX benutzt dabei das eigene Datenbankschema `goldx`, damit andere Anwendungen in `public` unberührt bleiben.
 
-### Technischer Aufbau
+**Es wird keine zweite kostenlose Datenbank erstellt.** Die Datenbank und der öffentliche Render-Backend-Link müssen einmalig in deinen Dashboard-Einstellungen konfiguriert werden. **Keine Datenbankzugangsdaten in GitHub oder den Chat kopieren.**
 
-Node.js 20+ · Express · PostgreSQL · Socket.IO · HTML/CSS/Canvas/Vanilla-JavaScript. Ein einzelner Node-Webservice liefert Website, REST-API und WebSocket. Das Backend erstellt die Tabellen beim Start.
+### 1. Render: Backend starten
 
-## In Render veröffentlichen (Blueprint)
+1. Öffne deinen vorhandenen Render-Blueprint `trading-game`.
+2. Klicke **Manual sync**. Die neue `render.yaml` enthält jetzt nur noch den Web-Service `goldx-trading`, keine Datenbank.
+3. Öffne bei Render deine **bereits existierende PostgreSQL-Datenbank** und kopiere die **Internal Database URL**. Nutze diese nur im privaten Render-Dashboard.
+4. Öffne Render → **goldx-trading** → **Environment** → **Add Environment Variable**.
+   - Name: `DATABASE_URL`
+   - Value: deine vorhandene **Internal Database URL**.
+   - `SESSION_SECRET` wird über die Blueprint-Datei automatisch generiert.
+   - `FRONTEND_ORIGIN` ist auf `https://skibidifusion200810-star.github.io` gesetzt.
+5. **Save, deploy**, und überprüfe `https://DEINE-RENDER-ADRESSE.onrender.com/api/health`. Die Antwort soll `{"ok":true}` sein.
+6. Kopiere die **öffentliche** Render-Backend-Adresse (z. B. `https://DEINE-RENDER-ADRESSE.onrender.com`, **nicht** die Datenbank-URL).
 
-1. Öffne **https://dashboard.render.com/blueprints** und wähle **New Blueprint Instance**.
-2. Verbinde GitHub mit Render und wähle **skibidifusion200810-star/Trading212**.
-3. Render erkennt die `render.yaml` im Repository und legt **goldx-trading** und **goldx-postgres** an.
-4. Bestätige den Blueprint-Deploy. Render erzeugt automatisch das `SESSION_SECRET` und übernimmt die interne `DATABASE_URL` der Datenbank.
-5. Sobald der Deploy erfolgreich ist, öffne die von Render angezeigte `https://...onrender.com`-Adresse und registriere dich.
+**Wichtig:** Backend und PostgreSQL müssen für die interne Datenbankadresse im selben Render-Region/privaten Netzwerk erreichbar sein. Die Blueprint-Datei setzt die Region `frankfurt`. Liegt deine existierende Datenbank in einer anderen Region, ändere den Eintrag `region` in `render.yaml` entsprechend, bevor du synchronisierst, oder verwende eine dafür geeignete externe Datenbankverbindung mit TLS.
 
-Du kannst stattdessen einen manuellen Web Service erstellen: Build `npm install --omit=dev`, Start `npm start`, mit einer PostgreSQL-Datenbank und den Umgebungsvariablen `DATABASE_URL` und `SESSION_SECRET` (mindestens 32 zufällige Zeichen). Verwende für echte Nutzer HTTPS.
+**Render-Besonderheit:** Bei bereits existierenden Blueprints fordert Render `DATABASE_URL` (`sync: false`) nach Updates oft nicht erneut an. Du musst den Wert dann im Environment-Tab des Web-Service setzen. Ohne ihn startet GOLDX nicht.
 
-**Wichtig bei kostenlosen Render-Instanzen:** Webdienste schlafen nach ca. 15 Minuten ohne Traffic ein; während dieser Zeit läuft die Preisberechnung nicht weiter. Beim Aufwachen setzt sie mit dem zuletzt gespeicherten Kurs fort. Die kostenlose Render-PostgreSQL-Datenbank läuft derzeit nach **30 Tagen** ab und ist daher nicht als dauerhafte Produktionsdatenbank geeignet. Verwende für ein dauerhaftes, durchgehend laufendes Spiel einen passenden kostenpflichtigen Tarif und regelmäßige Backups.
+### 2. GitHub Pages: Website veröffentlichen
 
-## Lokal ausführen
+1. Öffne im Repository **Settings → Pages**.
+2. Stelle unter **Build and deployment → Source** **GitHub Actions** ein. (Nicht „Deploy from a branch“.)
+3. Öffne **Settings → Secrets and variables → Actions → Variables → New repository variable**.
+4. Erstelle die Variable:
+   - **Name:** `GOLDX_API_URL`
+   - **Value:** die öffentliche Render-Backend-Adresse, z. B. `https://DEINE-RENDER-ADRESSE.onrender.com` (ohne Pfad, ohne abschließenden Slash).
+5. Öffne **Actions → Deploy GOLDX to GitHub Pages → Run workflow** (oder pushe erneut auf `main`).
+6. Deine Pages-Adresse ist nach erfolgreichem Deploy normalerweise:
+   **https://skibidifusion200810-star.github.io/Trading212/**
 
-Node.js und laufendes PostgreSQL erforderlich:
+Wenn die Variable noch fehlt, zeigt GOLDX eine verständliche Einrichtungsmeldung statt einer defekten Anmeldung. Die GitHub Actions-Workflow-Datei `.github/workflows/pages.yml` erzeugt automatisch die öffentliche `config.js` für diese API-Adresse. Die URL ist öffentlich und darf in der Website stehen — **niemals** aber das private `DATABASE_URL`-Passwort oder `SESSION_SECRET`.
+
+### 3. Testen
+
+- Backend: `https://DEIN-BACKEND.onrender.com/api/health` → `{"ok":true}`.
+- Pages: `https://skibidifusion200810-star.github.io/Trading212/`.
+- Registriere einen Testnutzer: 1.500 $ Startguthaben.
+- Erstelle einen Affiliate-Code (ein Code pro Benutzer). Registriere anderen Testnutzer mit Code: 3.500 $ Startguthaben; Werber erhält 1.000 $.
+- Öffne zwei unterschiedliche Browser/Konten und prüfe gemeinsamen Kurs, Chat und Bestenliste.
+- Teste BUY / SELL, Limit und Stop, Stop Loss/Take Profit.
+
+### Wenn etwas nicht geht
+
+| Fehler | Ursache / Lösung |
+|---|---|
+| „Backend noch nicht eingerichtet“ | GitHub Variable `GOLDX_API_URL` fehlt oder Pages-Workflow wurde danach nicht neu gestartet |
+| „Failed to fetch“ oder CORS | Prüfe Render-URL, Backend-Status und `FRONTEND_ORIGIN`; nur HTTPS verwenden |
+| Render startet nicht, `DATABASE_URL is required` | Füge `DATABASE_URL` im Environment-Tab des Render Web Service hinzu |
+| PostgreSQL-Verbindung abgelehnt | Prüfe Datenbankname, Region, Internal Database URL und Rechte, im Render-Dashboard |
+| Pages zeigt Repository-Inhalt statt App | Settings → Pages → Source → GitHub Actions setzen |
+| Kein Chat nach Login | Prüfe Browser-Konsole, WebSocket-Verbindung und Render-Server-Logs |
+| Render Sleep | Kostenloser Render-Service kann einschlafen; in der Zeit läuft die simulierte Markt-Engine nicht |
+
+## Sicherheit & Grenzen
+
+- Server berechnet verbindlich Kurs, Kontostände und Orders; keine echten Ein-/Auszahlungen.
+- Pages speichert für Cross-Origin-Anmeldung einen signierten Login-Token bis zu 7 Tage im Browser (`localStorage`). In einer größeren Produktion empfehlen sich stärkere Sessions, Token-Widerruf und weitere Schutzmaßnahmen.
+- Zugangsdaten bleiben serverseitig. Teile niemals deine Database URL, Passwörter, oder das `SESSION_SECRET` öffentlich.
+- Keine vollständig hochverfügbare Börseninfrastruktur: Auf dem kostenlosen Render-Backend pausiert der Kursgenerator, wenn der Prozess schläft. Es gibt keine Marktnachholung für die Zwischenzeit. Nutzerpositionen bleiben gespeichert; die marktbedingten Ausführungen werden erst bei laufendem Server wieder geprüft.
+- Für dauerhaft verfügbaren Handel und Daten sind ein laufender Server, beständige DB und Backups erforderlich.
+- Einfache Accountprüfungen ersetzen keinen vollständigen Schutz gegen Mehrfachkonten oder Affiliate-Betrug.
+
+## Lokal entwickeln
 
 ```bash
 npm install
-export DATABASE_URL="postgresql://postgres:password@localhost:5432/goldx"
-export SESSION_SECRET="ersetze-dies-durch-einen-langen-zufaelligen-geheimen-schluessel"
+# DATABASE_URL und SESSION_SECRET über deine eigene Umgebung setzen
 npm start
+npm run check
+npm test
 ```
 
-Danach `http://localhost:3000` öffnen. Unter Windows PowerShell werden Umgebungsvariablen mit `$env:DATABASE_URL="..."` und `$env:SESSION_SECRET="..."` gesetzt.
+`npm test` benötigt eine laufende PostgreSQL-Datenbank und eine `SESSION_SECRET`-Umgebungsvariable (mindestens 32 Zeichen). Die GitHub CI startet eine Testdatenbank automatisch.
 
-## Regeln
-
-- Jeder neue Account startet mit 1.500 virtuellen USD; mit gültigem Affiliate-Code mit 3.500 USD. Der Affiliate erhält 1.000 USD.
-- Affiliate-Codes sind einmalig und können bei Erstellung nicht verändert werden. Pro E-Mail/Benutzername kann nur ein Konto erstellt werden.
-- Long-Einstieg zum simulierten Ask, Long-Ausstieg zum Bid; bei Short umgekehrt. Der Spread beträgt 0,24 USD pro Feinunze.
-- Margin = Einstiegspreis × Menge / 20. Schließen berücksichtigt realisierten P&L, Verluste werden höchstens bis zum verfügbaren Guthaben verrechnet.
-- Affiliate-Boni sind nicht Bestandteil des Trading-Profits im Ranking.
-- Der Markt ist unabhängig von Spielerpositionen; kein Echtgeld, keine echten Börsenpreise.
-
-## Status und Grenzen
-
-**Spielbare erste Version (MVP)**: Das Projekt ist zum Deploy vorbereitet, aber nicht durch einen vollständigen Live-Test auf Render/PostgreSQL freigegeben. Ein 24/7-Preismarkt, hochverfügbare Multi-Instance-Architektur und weitergehender Betrugsschutz benötigen zusätzliche Infrastruktur. Der Preisgenerator läuft nur, solange der Node-Prozess aktiv ist. Angelegte Orders werden serverseitig überwacht, solange der Prozess läuft; bei Schlafmodus/Restart besteht eine Pause. Für Produktion empfehlenswert: Worker/Leader-Lock, robuste Marktdaten-Catch-up-Logik, Monitoring, Echtzeit-Lasttests, Verifizierung von Accounts, Missbrauchserkennung, Admin-Moderation, weitere Tests und Datenbank-Backups.
-
-### Sicherheitshinweise
-
-Keine geheimen Schlüssel ins Repository committen. Die App ist ausschließlich ein Echtgeld-freies Spiel. Öffentliche Bestenlisten und Chat-Inhalte sind sichtbar; Nutzer müssen sparsam mit persönlichen Daten umgehen.
-
-## Projektstruktur
+## Dateien
 
 ```
-├── server.js             # API, PostgreSQL, WebSockets, simulierte Trading-Engine
-├── public/
-│   ├── index.html        # Trading-Terminal und Seiten
-│   ├── app.js            # Canvas-Chart, Frontend-Interaktionen und Socket-Client
-│   └── style.css         # Modernes Responsive-Design
-├── package.json
-└── render.yaml           # Render Blueprint: Node-Webservice + PostgreSQL
+server.js                  # Backend: Login, Kurse, Orders, Chat, PostgreSQL
+public/index.html          # Statische Benutzeroberfläche
+public/app.js              # Chart und API/WebSocket-Client
+public/config.js           # Öffentliche API-Konfiguration (im Pages-Workflow generiert)
+public/style.css           # Responsives UI
+render.yaml                # Render-Web-Service ohne neue DB
+.github/workflows/pages.yml # GitHub Pages Release
+.github/workflows/ci.yml   # Integrationstests
+tests/smoke.test.js        # Auth, Affiliates, Orders, Livechat, CORS
 ```
